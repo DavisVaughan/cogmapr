@@ -184,7 +184,7 @@ RelationshipTest  <- function(project,
             dplyr::right_join(data.frame(edge = non.null.edges,
                                          stringsAsFactors=FALSE),
                               by = "edge") %>%
-            tidyr::replace_na(list(p.value = "NR"))
+            dplyr::mutate(p.value = ifelse(is.na(p.value), "NR", as.character(p.value)))
     }
 
     if (test == "anova") {
@@ -264,17 +264,18 @@ RelationshipTestSummary <- function(project,
                      output = "p.value"
                      ) %>%
         as.data.frame() %>% ### transform to a data frame (sometimes better then tibble)
-        dplyr::filter(p.value < limit.p.value) %>% ### filter only signif. diff. relations
+        dplyr::mutate(p.value = suppressWarnings(as.numeric(p.value))) %>%
+        dplyr::filter(!is.na(p.value) & p.value < limit.p.value) %>% ### filter only signif. diff. relations
         dplyr::left_join(unique(project$relationship), by = "edge")  %>% ### join with information on relationships
         dplyr::select(edge, edge_name, p.value) %>%
         dplyr::left_join(EdgSocCMap(project, units=units[1]) %>%
                          dplyr::select(edge, coding_weight)
                          ) %>%
-        dplyr::rename_(.dots=stats::setNames('coding_weight', units[1])) %>%
+        dplyr::rename(!!units[1] := coding_weight) %>%
         dplyr::left_join(EdgSocCMap(project, units=units[2]) %>%
                          dplyr::select(edge, coding_weight)
                          ) %>%
-        dplyr::rename_(.dots=stats::setNames('coding_weight', units[2])) %>%
+        dplyr::rename(!!units[2] := coding_weight) %>%
         replace(is.na(.), 0)
 }
 
